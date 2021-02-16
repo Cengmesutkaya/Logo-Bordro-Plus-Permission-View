@@ -1,0 +1,29 @@
+SELECT   
+     ISNULL(ROW_NUMBER() OVER(ORDER BY (SELECT NULL)), -1) AS Id,
+     pt.PERREF as 'PersonId'
+	 ,IntranetPerson.Id as IntranetPersonId
+	 ,IntranetPerson.ImageUrl
+    ,IntranetPerson.NameSurname
+   ,IntranetPerson.ManagerName
+    ,IntranetPerson.DepartmantId
+	,IntranetPerson.ManagerId
+   ,(DATEDIFF(month, Person.Indate, getdate())/12) as 'WorkYear'
+   ,Sum(
+    case
+    when Activity.EXP = 'Yıllık izin' and PERIOD = 0 then (0.5) 
+	--when (DATEDIFF(month, Person.Indate, getdate())/12) = 0 then 0
+	else (PERIOD) 
+	end
+	) as 'UsedPermission'
+   ,(case 
+	when (DATEDIFF(month, Person.Indate, getdate())/12) >= 6 and (DATEDIFF(month, Person.Indate, getdate())/12) < 15 then ((14*(DATEDIFF(month, Person.Indate, getdate())/12))+(((DATEDIFF(month, Person.Indate, getdate())/12)-5))*6)
+	when (DATEDIFF(month, Person.Indate, getdate())/12) >= 15 then ((14*(DATEDIFF(month, Person.Indate, getdate())/12))+(((DATEDIFF(month, Person.Indate, getdate())/12)-5)*6)+(((DATEDIFF(month, Person.Indate, getdate())/12)-15))*6)
+	when (DATEDIFF(month, Person.Indate, getdate())/12) < 6  then (14*(DATEDIFF(month, Person.Indate, getdate())/12))
+	end) as 'EarnedPermission'
+	,Person.Indate as 'JobStartDate'
+  FROM [BORDRODB].[dbo].[LH_002_ACTPLNLN] as pt
+  inner join [LH_002_ACTIVITY] as Activity ON pt.ACTIVITYREF = Activity.LREF
+  inner join LH_002_PERSON as Person on pt.PERREF = Person.LREF
+  inner join [IntranetDB].[dbo].[Person] as IntranetPerson on IntranetPerson.TcNo = Person.TTFNO
+where Person.TYP =1 and ((Activity.EXP = 'Mazeretli İzin' and [PERIOD] !=0) or Activity.EXP = 'Yıllık izin' or (Activity.EXP ='Geçersiz Mazeret' and [PERIOD] !=0))
+group by pt.PERREF,IntranetPerson.NameSurname,IntranetPerson.ManagerName,Person.Indate,IntranetPerson.ImageUrl,IntranetPerson.DepartmantId,IntranetPerson.ManagerId,IntranetPerson.Id
